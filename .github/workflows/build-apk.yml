@@ -7,27 +7,45 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
+    runs-on: ubuntu-22.04
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
 
       - name: Install system dependencies
         run: |
           sudo apt update -qq
           sudo apt install -y -qq autoconf automake libtool libffi-dev libltdl-dev \
-            openjdk-17-jdk python3-pip python3-venv git zip unzip libssl-dev
+            openjdk-17-jdk git zip unzip libssl-dev python3-venv
 
-      - name: Install buildozer
+      - name: Install buildozer and cython
         run: |
-          pip install --upgrade pip
+          pip install --upgrade pip setuptools
           pip install buildozer cython
+
+      - name: Accept Android licenses
+        run: |
+          mkdir -p /usr/local/lib/android/sdk/licenses
+          echo -e "\n24333f8a63b6825ea9c5514f83c2829b004d1fee" > /usr/local/lib/android/sdk/licenses/android-sdk-license
+          echo -e "\nd56f5187479451eabf01fb78af6dfcb131a6481e" >> /usr/local/lib/android/sdk/licenses/android-sdk-license
 
       - name: Build APK
         env:
           BUILDOZER_WARN_ON_ROOT: "0"
         run: |
-          buildozer -v android debug
+          set -o pipefail
+          buildozer -v android debug 2>&1 | tail -200
+
+      - name: List APK files
+        if: always()
+        run: |
+          echo "=== Looking for APK ==="
+          find . -name "*.apk" -type f 2>/dev/null || echo "No APK found"
+          ls -la bin/ 2>/dev/null || echo "No bin directory"
 
       - name: Upload APK artifact
         if: always()

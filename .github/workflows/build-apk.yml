@@ -8,6 +8,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -15,17 +16,21 @@ jobs:
         run: |
           sudo apt update -qq
           sudo apt install -y -qq autoconf automake libtool libffi-dev libltdl-dev \
-            openjdk-17-jdk python3-pip git zip unzip
+            openjdk-17-jdk python3-pip python3-venv git zip unzip libssl-dev
 
       - name: Install buildozer
-        run: pip install buildozer cython
+        run: |
+          pip install --upgrade pip
+          pip install buildozer cython
 
       - name: Build APK
+        env:
+          BUILDOZER_WARN_ON_ROOT: "0"
         run: |
-          export BUILDOZER_WARN_ON_ROOT=0
           buildozer -v android debug
 
       - name: Upload APK artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: pomodoro-apk

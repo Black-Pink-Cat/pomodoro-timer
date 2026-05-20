@@ -9,43 +9,28 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     timeout-minutes: 40
+    container:
+      image: kivy/buildozer:latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
-
-      - name: Install system dependencies
-        run: |
-          sudo apt update -qq
-          sudo apt install -y -qq autoconf automake libtool libffi-dev libltdl-dev \
-            openjdk-17-jdk git zip unzip libssl-dev python3-venv
-
-      - name: Install buildozer and cython
-        run: |
-          pip install --upgrade pip setuptools
-          pip install buildozer cython
-
-      - name: Accept Android licenses
-        run: |
-          mkdir -p /usr/local/lib/android/sdk/licenses
-          echo -e "\n24333f8a63b6825ea9c5514f83c2829b004d1fee" > /usr/local/lib/android/sdk/licenses/android-sdk-license
-          echo -e "\nd56f5187479451eabf01fb78af6dfcb131a6481e" >> /usr/local/lib/android/sdk/licenses/android-sdk-license
+      - name: Show disk space
+        run: df -h
 
       - name: Build APK
-        env:
-          BUILDOZER_WARN_ON_ROOT: "0"
         run: |
-          set -o pipefail
-          buildozer -v android debug 2>&1 | tail -200
+          buildozer android debug
 
-      - name: List APK files
+      - name: Check build result
         if: always()
         run: |
-          echo "=== Looking for APK ==="
-          find . -name "*.apk" -type f 2>/dev/null || echo "No APK found"
-          ls -la bin/ 2>/dev/null || echo "No bin directory"
+          echo "=== Build directory ==="
+          ls -la ./
+          echo "=== Bin directory ==="
+          ls -la bin/ 2>/dev/null || echo "No bin dir"
+          find . -name "*.apk" 2>/dev/null || echo "No APK files found"
+          echo "=== Last 50 lines of buildozer log ==="
+          tail -50 .buildozer/android/platform/buildozer.log 2>/dev/null || echo "No log"
 
       - name: Upload APK artifact
         if: always()
